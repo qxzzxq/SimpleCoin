@@ -11,7 +11,7 @@ class Block(val index: Int,
   val hash: String = sha256Hash(s"$index$timestamp$data$previousHash")
 
   override def toString: String = {
-    s"Hash of block $index: $hash"
+    s"Hash of block #$index: $hash"
   }
 
 }
