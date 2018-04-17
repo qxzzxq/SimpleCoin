@@ -1,4 +1,4 @@
-package com.qinxuzhou
+package com.qinxuzhou.simplecoin
 
 import scala.collection.mutable.ArrayBuffer
 

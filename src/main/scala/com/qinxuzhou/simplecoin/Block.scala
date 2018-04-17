@@ -1,7 +1,6 @@
-package com.qinxuzhou
+package com.qinxuzhou.simplecoin
 
-
-import com.qinxuzhou.Hasher.sha256Hash
+import com.qinxuzhou.simplecoin.Hasher.sha256Hash
 
 class Block(val index: Int,
             val timestamp: Long,

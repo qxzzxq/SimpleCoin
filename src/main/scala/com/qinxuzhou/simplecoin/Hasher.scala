@@ -1,4 +1,4 @@
-package com.qinxuzhou
+package com.qinxuzhou.simplecoin
 
 object Hasher {
 

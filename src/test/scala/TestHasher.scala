@@ -1,4 +1,4 @@
-import com.qinxuzhou.Hasher
+import com.qinxuzhou.simplecoin.Hasher
 import org.scalatest.{FlatSpec, Matchers}
 
 class TestHasher extends FlatSpec with Matchers {
