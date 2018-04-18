@@ -1,73 +1,82 @@
 package com.qinxuzhou.simplecoin
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives
+import akka.http.scaladsl.server.{Directives, StandardRoute}
+import akka.http.scaladsl.{Http, server}
 import akka.stream.ActorMaterializer
+import com.qinxuzhou.simplecoin.utils.JsonSupport
 import com.typesafe.config.ConfigFactory
-import spray.json.DefaultJsonProtocol
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
 
 
-object Node {
+class Node extends Directives with JsonSupport {
 
-  def main(args: Array[String]) {
-
-    val simpleCoinNode: SimpleCoinNode = new SimpleCoinNode
-
-    simpleCoinNode.runServer()
-
-  }
-
-  trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
-    implicit val transactionFormat = jsonFormat3(Transaction)
-  }
-
-  final case class Transaction(from: String, to: String, amount: Float)
-
-  class SimpleCoinNode extends Directives with JsonSupport {
-
-    implicit val system: ActorSystem = ActorSystem("SimpleCoinNode", ConfigFactory.load())
-    implicit val materializer: ActorMaterializer = ActorMaterializer()
-    // needed for the future flatMap/onComplete in the end
-    implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-    val route =
-      path("") {
+  implicit val system: ActorSystem = ActorSystem("SimpleCoinNode", ConfigFactory.load())
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+  val route: server.Route =
+    path("") {
+      get {
+        complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"<h1>SimpleCoin Node v0.0.1</h1>"))
+      }
+    } ~
+      path("address") {
         get {
-          complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"<h1>SimpleCoin Node v0.0.1</h1>"))
+          // get miner address
+          complete(s"$address\n")
         }
-      } ~
-        path("tx") {
-          post {
-            entity(as[Transaction]) { transaction =>
-              thisNodesTransactions += transaction
-
-              println("New transaction:")
-              println(s"From: ${transaction.from}")
-              println(s"To: ${transaction.to}")
-              println(s"Amount: ${transaction.amount}")
-
-              complete(s"Transaction succeed. tx: $transaction")
-            }
-          }
-        }
-    var thisNodesTransactions: ArrayBuffer[Transaction] = ArrayBuffer[Transaction]()
-
-    def runServer(): Unit = {
-      val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
-
-      println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
-      StdIn.readLine() // let it run until user presses return
-      bindingFuture
-        .flatMap(_.unbind()) // trigger unbinding from the port
-        .onComplete(_ => system.terminate()) // and shutdown when done
+      }
+  var thisNodesTransactions: ArrayBuffer[Transaction] = ArrayBuffer[Transaction]()
+  var address: String = scala.util.Random.alphanumeric.take(30).mkString
+  path("tx") {
+    post {
+      entity(as[Transaction]) { transaction => addTransaction(thisNodesTransactions, transaction) }
+    }
+  } ~
+    path("mine") {
+      get {
+        complete("mining")
+      }
     }
 
+  def addTransaction(nodesTransactions: ArrayBuffer[Transaction], newTx: Transaction): StandardRoute = {
+    // Add tx to node's transaction list
+    nodesTransactions += newTx
+
+    println("New transaction:")
+    println(s"From: ${newTx.from}")
+    println(s"To: ${newTx.to}")
+    println(s"Amount: ${newTx.amount}")
+
+    complete(s"Transaction succeed. tx: $newTx\n")
   }
 
+
+  def proofOfWork(lastProof: Int): Int = {
+    var incrementer = lastProof + 1
+
+    var stop = incrementer % 9 == 0 && incrementer % lastProof == 0
+
+    while (!stop) {
+      incrementer += 1
+      stop = incrementer % 9 == 0 && incrementer % lastProof == 0
+    }
+
+    incrementer
+  }
+
+
+  def runServer(): Unit = {
+    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+
+    println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+    StdIn.readLine() // let it run until user presses return
+    bindingFuture
+      .flatMap(_.unbind()) // trigger unbinding from the port
+      .onComplete(_ => system.terminate()) // and shutdown when done
+  }
 }
