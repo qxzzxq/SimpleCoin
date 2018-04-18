@@ -29,19 +29,19 @@ class Node extends Directives with JsonSupport {
           // get miner address
           complete(s"$address\n")
         }
+      } ~
+      path("tx") {
+        post {
+          entity(as[Transaction]) { transaction => addTransaction(thisNodesTransactions, transaction) }
+        }
+      } ~
+      path("mine") {
+        get {
+          complete("mining")
+        }
       }
   var thisNodesTransactions: ArrayBuffer[Transaction] = ArrayBuffer[Transaction]()
   var address: String = scala.util.Random.alphanumeric.take(30).mkString
-  path("tx") {
-    post {
-      entity(as[Transaction]) { transaction => addTransaction(thisNodesTransactions, transaction) }
-    }
-  } ~
-    path("mine") {
-      get {
-        complete("mining")
-      }
-    }
 
   def addTransaction(nodesTransactions: ArrayBuffer[Transaction], newTx: Transaction): StandardRoute = {
     // Add tx to node's transaction list
