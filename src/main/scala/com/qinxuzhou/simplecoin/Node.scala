@@ -18,6 +18,10 @@ class Node extends Directives with JsonSupport {
   implicit val system: ActorSystem = ActorSystem("SimpleCoinNode", ConfigFactory.load())
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+
+  var thisNodesTransactions: ArrayBuffer[Transaction] = ArrayBuffer[Transaction]()
+  var address: String = scala.util.Random.alphanumeric.take(30).mkString
+
   val route: server.Route =
     path("") {
       get {
@@ -40,8 +44,7 @@ class Node extends Directives with JsonSupport {
           complete("mining")
         }
       }
-  var thisNodesTransactions: ArrayBuffer[Transaction] = ArrayBuffer[Transaction]()
-  var address: String = scala.util.Random.alphanumeric.take(30).mkString
+
 
   def addTransaction(nodesTransactions: ArrayBuffer[Transaction], newTx: Transaction): StandardRoute = {
     // Add tx to node's transaction list
