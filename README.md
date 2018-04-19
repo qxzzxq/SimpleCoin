@@ -2,7 +2,7 @@ This is a very simple blockchain demo implemented with Scala.
 
 ## Build the jar and run SimpleCoin node
 ```bash
-java -jar out/artifacts/SimpleCoin_jar/SimpleCoin.jar
+java -cp out/artifacts/SimpleCoin_jar/SimpleCoin.jar com.qinxuzhou.simplecoin.SimpleCoinNode
 ```
 
 ## Make transaction
