@@ -15,7 +15,6 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
 
 
-
 class Node extends Directives with JsonSupport {
 
   implicit val system: ActorSystem = ActorSystem("SimpleCoinNode", ConfigFactory.load())
@@ -76,25 +75,8 @@ class Node extends Directives with JsonSupport {
     val previousHash = "0"
     val nonce = proofOfWork(index, data, previousHash, 0)
 
-    new Block(
-      index,
-      timestamp,
-      nonce,
-      data,
-      previousHash
-    )
+    new Block(index, timestamp, nonce, data, previousHash)
   }
-
-
-  /*  def nextBlock(lastBlock: Block): Block = {
-      val thisIndex = lastBlock.index + 1
-      val thisTimeStamp = System.currentTimeMillis / 1000
-      val thisData = s"This this block $thisIndex"
-      val previousHash = lastBlock.hash
-
-      // Create new block
-      new Block(thisIndex, thisTimeStamp, thisData, previousHash)
-    }*/
 
 
   @tailrec
