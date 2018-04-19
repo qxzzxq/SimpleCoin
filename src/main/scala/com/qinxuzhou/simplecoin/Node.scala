@@ -5,12 +5,15 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{Directives, StandardRoute}
 import akka.http.scaladsl.{Http, server}
 import akka.stream.ActorMaterializer
-import com.qinxuzhou.simplecoin.utils.JsonSupport
+import com.qinxuzhou.simplecoin.Hasher.sha256Hash
+import com.qinxuzhou.simplecoin.utils._
 import com.typesafe.config.ConfigFactory
 
+import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
+
 
 
 class Node extends Directives with JsonSupport {
@@ -20,7 +23,8 @@ class Node extends Directives with JsonSupport {
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
   var thisNodesTransactions: ArrayBuffer[Transaction] = ArrayBuffer[Transaction]()
-  var address: String = scala.util.Random.alphanumeric.take(30).mkString
+  var minerAddress: String = scala.util.Random.alphanumeric.take(30).mkString
+  var blockChain: ArrayBuffer[Block] = ArrayBuffer[Block](createGenesisBlock())
 
   val route: server.Route =
     path("") {
@@ -31,7 +35,7 @@ class Node extends Directives with JsonSupport {
       path("address") {
         get {
           // get miner address
-          complete(s"$address\n")
+          complete(s"$minerAddress\n")
         }
       } ~
       path("tx") {
@@ -41,7 +45,13 @@ class Node extends Directives with JsonSupport {
       } ~
       path("mine") {
         get {
-          complete("mining")
+          mine(msg = "qxz")
+        }
+      } ~
+      path("blockchain") {
+        get {
+          val chain = blockChain.toArray.map(_.toJsonBlock)
+          complete(BlockChain(chain))
         }
       }
 
@@ -59,17 +69,73 @@ class Node extends Directives with JsonSupport {
   }
 
 
-  def proofOfWork(lastProof: Int): Int = {
-    var incrementer = lastProof + 1
+  def createGenesisBlock(): Block = {
+    val index = 0
+    val timestamp = System.currentTimeMillis / 1000
+    val data = BlockData(ArrayBuffer[Transaction]().toArray, "Genesis block")
+    val previousHash = "0"
+    val nonce = proofOfWork(index, data, previousHash, 0)
 
-    var stop = incrementer % 9 == 0 && incrementer % lastProof == 0
+    new Block(
+      index,
+      timestamp,
+      nonce,
+      data,
+      previousHash
+    )
+  }
 
-    while (!stop) {
-      incrementer += 1
-      stop = incrementer % 9 == 0 && incrementer % lastProof == 0
+
+  /*  def nextBlock(lastBlock: Block): Block = {
+      val thisIndex = lastBlock.index + 1
+      val thisTimeStamp = System.currentTimeMillis / 1000
+      val thisData = s"This this block $thisIndex"
+      val previousHash = lastBlock.hash
+
+      // Create new block
+      new Block(thisIndex, thisTimeStamp, thisData, previousHash)
+    }*/
+
+
+  @tailrec
+  private def proofOfWork(index: Int, data: BlockData, previousHash: String, nonce: Int): Int = {
+    val prefix = s"$index$data$previousHash"
+    val newHash = sha256Hash(s"$prefix$nonce")
+    newHash.take(4) match {
+      case "0000" => nonce
+      case _ => proofOfWork(index, data, previousHash, nonce + 1)
     }
+  }
 
-    incrementer
+
+  def generateNewBlock(previousBlock: Block, newBlockData: BlockData): Block = {
+    val newIndex = previousBlock.index + 1
+    val previousHash = previousBlock.hash
+    val newNonce = proofOfWork(newIndex, newBlockData, previousHash, 0)
+
+    new Block(
+      index = newIndex,
+      timestamp = System.currentTimeMillis / 1000,
+      nonce = newNonce,
+      data = newBlockData,
+      previousHash = previousHash
+    )
+  }
+
+
+  def mine(msg: String = ""): StandardRoute = {
+    val lastBlock = blockChain.last
+    val miningReward = Transaction(from = "Network", to = minerAddress, amount = 10f)
+    thisNodesTransactions += miningReward
+    val newBlockData = BlockData(transaction = thisNodesTransactions.toArray, message = msg)
+
+    val newBlock = generateNewBlock(lastBlock, newBlockData)
+    thisNodesTransactions.clear()
+    blockChain += newBlock
+
+    val output = s"New block ${newBlock.index} (${newBlock.hash}) generate at ${newBlock.timestamp}\n"
+    println(output)
+    complete(newBlock.toJsonBlock)
   }
 
 

@@ -29,24 +29,4 @@ object App {
     simpleCoinNode.runServer()
   }
 
-
-  def createGenesisBlock(): Block = {
-    new Block(
-      index = 0,
-      timestamp = System.currentTimeMillis / 1000,
-      data = "Genesis block",
-      previousHash = "0"
-    )
-  }
-
-
-  def nextBlock(lastBlock: Block): Block = {
-    val thisIndex = lastBlock.index + 1
-    val thisTimeStamp = System.currentTimeMillis / 1000
-    val thisData = s"This this block $thisIndex"
-    val previousHash = lastBlock.hash
-
-    // Create new block
-    new Block(thisIndex, thisTimeStamp, thisData, previousHash)
-  }
 }
