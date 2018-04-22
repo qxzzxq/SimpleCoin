@@ -1,7 +1,7 @@
 package com.qinxuzhou.simplecoin
 
 
-object Hasher {
+object HashAlgorithm {
 
   def sha256Hash(text: String): String = {
     String.format(
@@ -13,9 +13,4 @@ object Hasher {
           .getInstance("SHA-256")
           .digest(text.getBytes("UTF-8"))))
   }
-
-  def hashOfBlock(index: Int, data: BlockData, previousHash: String, nonce: Int): String = {
-    sha256Hash(s"$index$data$previousHash$nonce")
-  }
-
 }

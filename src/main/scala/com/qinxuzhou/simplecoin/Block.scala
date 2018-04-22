@@ -1,25 +1,31 @@
 package com.qinxuzhou.simplecoin
 
-import com.qinxuzhou.simplecoin.Hasher.hashOfBlock
-import com.qinxuzhou.simplecoin.utils.Transaction
+import com.qinxuzhou.simplecoin.HashAlgorithm.sha256Hash
+import com.qinxuzhou.simplecoin.utils.{BlockData, JsonBlock}
 import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException
 
 
-class Block(val index: Int,
-            val timestamp: Long,
-            val nonce: Int = 0,
-            val data: BlockData,
-            val previousHash: String) {
+case class Block(index: Int,
+                 timestamp: Long,
+                 nonce: Int,
+                 data: BlockData,
+                 hash: String,
+                 previousHash: String) {
 
-  val hash: String = validateHash()
+  val difficulty: Int = 4
+  private val _hash = hashOfBlock(index, data, previousHash, nonce, sha256Hash)
+  private val validHashPrefix = "0" * difficulty
 
-  def validateHash(): String = {
-    val newHash = hashOfBlock(index, data, previousHash, nonce)
+  if (hash != _hash || !hash.startsWith(validHashPrefix)) {
+    throw new ValueException("Not a valid hash!")
+  }
 
-    newHash.take(4) match {
-      case "0000" => newHash
-      case _ => throw new ValueException("Not a valid hash!")
-    }
+  def hashOfBlock(index: Int,
+                  data: BlockData,
+                  previousHash: String,
+                  nonce: Int,
+                  hashAlgorithm: String => String): String = {
+    hashAlgorithm(s"$index$data$previousHash$nonce")
   }
 
   def toJsonBlock: JsonBlock = {
@@ -28,15 +34,3 @@ class Block(val index: Int,
 
 }
 
-
-final case class JsonBlock(index: Int,
-                           timestamp: Long,
-                           nonce: Int,
-                           data: BlockData,
-                           hash: String,
-                           previousHash: String
-                          )
-
-
-final case class BlockData(transaction: Array[Transaction],
-                           message: String)
