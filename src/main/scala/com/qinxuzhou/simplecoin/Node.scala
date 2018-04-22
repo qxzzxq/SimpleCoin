@@ -1,10 +1,10 @@
 package com.qinxuzhou.simplecoin
 
-import java.net._
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{Directives, StandardRoute}
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.http.scaladsl.{Http, server}
 import akka.stream.ActorMaterializer
 import com.qinxuzhou.simplecoin.HashAlgorithm.sha256Hash
@@ -13,8 +13,9 @@ import com.typesafe.config.ConfigFactory
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.io.StdIn
+import scala.util.{Failure, Success}
 
 
 class Node extends Directives with JsonSupport {
@@ -23,13 +24,15 @@ class Node extends Directives with JsonSupport {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  private var blockChain: BlockChain = new BlockChain(ArrayBuffer(createGenesisBlock()))
+  private val blockChain: BlockChain = BlockChain(ArrayBuffer(createGenesisBlock()))
 
-  private var peerNodes: ArrayBuffer[Node] = ArrayBuffer[Node]()
+  private var peerNodes: String = "192.168.0.23"
 
   var thisNodesTransactions: ArrayBuffer[Transaction] = ArrayBuffer[Transaction]()
   var minerAddress: String = scala.util.Random.alphanumeric.take(30).mkString
-  val nodeURL: String = InetAddress.getLocalHost.getHostAddress
+
+  val nodeURL: String = "0.0.0.0"
+  val nodePort: String = "8080"
 
   val route: server.Route =
     path("") {
@@ -57,7 +60,29 @@ class Node extends Directives with JsonSupport {
         get {
           complete(blockChain.toJsonBlockChain)
         }
+      } ~
+      path("otherchains") {
+        get {
+          complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"<h1>${findNewChains()}</h1>"))
+        }
       }
+
+
+  def findNewChains(nodeURL: String): Unit = {
+    val response: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"http://$peerNodes:$nodePort/blockchain"))
+    // TODO finish method
+    response
+      .onComplete({
+        case Success(res) => {
+          val jbc = Unmarshal(res.entity).to[JsonBlockChain]
+          jbc.onComplete({
+            case Success(data) => println(data.blockChain(0).hash)
+            case Failure(msg) => println(msg)
+          })
+        }
+        case Failure(msg) => println(msg)
+      })
+  }
 
 
   def addTransaction(nodesTransactions: ArrayBuffer[Transaction], newTx: Transaction): StandardRoute = {
@@ -114,9 +139,9 @@ class Node extends Directives with JsonSupport {
     val miningReward = Transaction(from = "Network", to = minerAddress, amount = 10f)
     thisNodesTransactions += miningReward
     val newBlockData = BlockData(transaction = thisNodesTransactions.toArray, message = msg)
+    thisNodesTransactions.clear()
 
     val newBlock = generateNewBlock(lastBlock, newBlockData)
-    thisNodesTransactions.clear()
     blockChain.add(newBlock)
 
     val output = s"New block ${newBlock.index} (${newBlock.hash}) generate at ${newBlock.timestamp}\n"
