@@ -9,13 +9,18 @@ import scala.collection.mutable.ArrayBuffer
 
 final case class Transaction(from: String,
                              to: String,
-                             amount: Float)
+                             amount: Float) {
+  override def toString: String = {
+    s"""{"from": $from, "to": $to, "amount": $amount}"""
+  }
+}
 
 final case class JsonBlockChain(blockChain: Array[JsonBlock]) {
   def toBlockChain: BlockChain = {
     val _blockChain = blockChain.map(block => block.toBlock)
     BlockChain(ArrayBuffer(_blockChain: _*))
   }
+
 }
 
 
@@ -32,7 +37,11 @@ final case class JsonBlock(index: Int,
 
 
 final case class BlockData(transaction: Array[Transaction],
-                           message: String)
+                           message: String) {
+  override def toString: String = {
+    s"""{"transaction": [${transaction.map(_.toString).mkString(", ")}], "message": $message}"""
+  }
+}
 
 
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {

@@ -31,4 +31,8 @@ case class BlockChain(var blockChain: ArrayBuffer[Block]) {
 
     JsonBlockChain(_jsonFormatChain)
   }
+
+  override def toString: String = {
+    s"""{"blockChain": [${blockChain.map(_.toString).mkString(", ")}]}"""
+  }
 }

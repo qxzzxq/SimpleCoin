@@ -26,7 +26,8 @@ class Node extends Directives with JsonSupport {
 
   private val blockChain: BlockChain = BlockChain(ArrayBuffer(createGenesisBlock()))
 
-  private var peerNodes: String = "192.168.0.23"
+  private var peerNodes: Array[String] = Array("http://192.168.0.23:8080")
+  private var nodesChains: ArrayBuffer[BlockChain] = ArrayBuffer[BlockChain]()
 
   var thisNodesTransactions: ArrayBuffer[Transaction] = ArrayBuffer[Transaction]()
   var minerAddress: String = scala.util.Random.alphanumeric.take(30).mkString
@@ -68,19 +69,31 @@ class Node extends Directives with JsonSupport {
       }
 
 
-  def findNewChains(nodeURL: String): Unit = {
-    val response: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"http://$peerNodes:$nodePort/blockchain"))
-    // TODO finish method
-    response
-      .onComplete({
-        case Success(res) => {
-          val jbc = Unmarshal(res.entity).to[JsonBlockChain]
-          jbc.onComplete({
-            case Success(data) => println(data.blockChain(0).hash)
-            case Failure(msg) => println(msg)
-          })
-        }
-        case Failure(msg) => println(msg)
+  /**
+    *
+    */
+  def findNewChains(): Unit = {
+
+    peerNodes
+      .foreach({
+        node =>
+          val response: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"$node/blockchain"))
+
+          response
+            .onComplete({
+              case Success(res) =>
+                val jbc = Unmarshal(res.entity).to[JsonBlockChain]
+                jbc.onComplete({
+                  case Success(chain) =>
+                    complete(chain)
+                    println(chain.toBlockChain)
+                    nodesChains += chain.toBlockChain
+                  case Failure(msg2) =>
+                    println(msg2)
+                })
+              case Failure(msg1) => println(msg1)
+            })
+
       })
   }
 
@@ -114,7 +127,11 @@ class Node extends Directives with JsonSupport {
     val prefix = s"$index$data$previousHash"
     val newHash = sha256Hash(s"$prefix$nonce")
 
-    if (newHash.startsWith("0000")) (nonce, newHash) else proofOfWork(index, data, previousHash, nonce + 1)
+    if (newHash.startsWith("0000")) {
+
+      println(prefix, nonce, newHash)
+      (nonce, newHash)
+    } else proofOfWork(index, data, previousHash, nonce + 1)
   }
 
 
